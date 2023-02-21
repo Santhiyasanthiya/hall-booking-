@@ -9,7 +9,13 @@ app.use(express.json());
 
 const rooms = [];
 const customers = [];
+
+app.get("/", function(req,res) {
+  res.send("Welcome To Hall Booking App")
+})
+
 //get(display) rooms
+
 app.get("/rooms", async function (request, response) {
   try {
     // Open the connection
