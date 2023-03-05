@@ -1,166 +1,146 @@
+require("dotenv").config();
 const express = require("express");
 const app = express();
-const mongodb = require("mongodb");
-const mongoClient = mongodb.MongoClient;
-const dotenv = require('dotenv').config();
-const URL = process.env.DB;
-//middleware
+
 app.use(express.json());
 
-const rooms = [];
-const customers = [];
-
-app.get("/", function(req,res) {
-  res.send("Welcome To Hall Booking App")
-})
-
-//get(display) rooms
-
-app.get("/rooms", async function (request, response) {
-  try {
-    // Open the connection
-    const connection = await mongoClient.connect(URL);
-    // Select DB
-    const db = connection.db("hallbooking");
-    // select the collection and do operation
-    let rooms = await db.collection("rooms").find().toArray();
-    // Close the connection
-    await connection.close();
-
-    response.json(rooms);
-  } catch (error) {
-    console.log(error);
-  }
-});
-
-//get(display) customers
-app.get("/customers", async function (request, response) {
-  try {
-    // Open the connection
-    const connection = await mongoClient.connect(URL);
-    // Select DB
-    const db = connection.db("hallbooking");
-    // select the collection and do operation
-    let customers = await db.collection("customers").find().toArray();
-    // Close the connection
-    await connection.close();
-
-    response.json(customers);
-  } catch (error) {
-    console.log(error);
-  }
-});
-
-//post(insert) rooms
-app.post("/room", async function (request, response) {
-  try {
-    // Open the connection
-    const connection = await mongoClient.connect(URL);
-    // Select DB
-    const db = connection.db("hallbooking");
-    // select the collection and do operation
-    await db.collection("rooms").insertOne(request.body);
-    // Close the connection
-    await connection.close();
-
-    response.json({
-      message: "Rooms added successfully!!!",
-    });
-  } catch (error) {
-    console.log(error);
-  }
-  // request.body.id = rooms.length + 1;
-  // console.log(request.body);
-  // rooms.push(request.body);
-  // response.json({
-  //   message: "Rooms added successfully!!!",
-  // });
-});
-
-//post(booking) rooms
-app.post("/bookroom", async function (request, response) {
-  try {
-    // Open the connection
-    const connection = await mongoClient.connect(URL);
-    // Select DB
-    const db = connection.db("hallbooking");
-    // select the collection and do operation
-    await db.collection("customers").insertOne(request.body);
-    // Close the connection
-    await connection.close();
-
-    response.json({
-      message: "Customers and booking details added successfully!!!",
-    });
-  } catch (error) {
-    console.log(error);
-  }
-  // request.body.id = customers.length + 1;
-  // console.log(request.body);
-  // customers.push(request.body);
-  // response.json({
-  //   message: "Customers and booking details added successfully!!!",
-  // });
-});
-
-//get roomsbooked
-app.get("/roomsbooked", async function (request, response) {
-  try {
-    const pipeline = [
+//room
+const rooms = [
+  {
+    name: "Elite",
+    seats: 50,
+    amenities: "wifi,projection screen,AC",
+    price: 1500,
+    roomId: "2525",
+    bookingDetails: [
       {
-        $lookup: {
-          from: "customers",
-          localField: "_id",
-          foreignField: "roomID",
-          as: "customer",
-        },
+        customerName: "Guvi",
+        date: new Date("2023-01-04"),
+        start: "07:00",
+        end: "10:00",
+        status: "confirmed",
       },
+    ],
+  },
+  {
+    name: "Premium",
+    seats: 100,
+    amenities: "wifi,projection screen,AC",
+    price: 2500,
+    roomId: "5252",
+    bookingDetails: [
       {
-        $addFields: {
-          reservation: {
-            $cond: [
-              {
-                $eq: ["$customer", []],
-              },
-              "Not booked",
-              "Booked",
-            ],
-          },
-        },
+        customerName: "zen",
+        date: new Date("2023-01-05"),
+        start: "15:00",
+        end: "17:00",
+        status: "Payment Pending",
       },
-    ]
-    // Open the connection
-    const connection = await mongoClient.connect(URL);
-    // Select DB
-    const db = connection.db("hallbooking");
-    const result =await db
-      .collection("rooms")
-      .aggregate(pipeline)
-      .toArray();
-      
-    response.json(result);
-  } catch (error) {
-    console.log(error);
+    ],
+  },
+  {
+    name: "Semi Class",
+    seats: 120,
+    amenities: "wifi,projection screen,AC,Food",
+    price: 2500,
+    roomId: "2255",
+    bookingDetails: [
+      {
+        customerName: "GEEK",
+        date: new Date("2023-1-06"),
+        start: "15:00",
+        end: "17:00",
+        status: "Payment Pending",
+      },
+    ],
+  },
+];
+//common call api status
+app.get("/", (req, res) => {
+  res.status(200).send("Welcome To Hall Booking App");
+});
+
+//create room
+app.post("/createRoom", (req, res) => {
+  rooms.push({
+    name: req.body.name,
+    seats: req.body.seats,
+    amenities: req.body.amenities,
+    price: req.body.price,
+    roomId: "001",
+    bookingDetails: [{}],
+  });
+  res.status(200).send("Room Created");
+});
+
+//Book rooms
+app.post("/bookRoom", (req, res, next) => {
+  for (let i = 0; i < rooms.length; i++) {
+    console.log("Book");
+    if (!(rooms[i].roomId === req.body.roomId)) {
+      return res.status(400).send({ error: "Invalid" });
+    } else {
+      let booking = {
+        customerName: req.body.name,
+        date: new Date(req.body.date),
+        start: req.body.start,
+        end: req.body.end,
+        status: "confirmed",
+      };
+      let result = undefined;
+      rooms[i].bookingDetails.forEach((book) => {
+        if (
+          book.date.getTime() == booking.date.getTime() &&
+          book.start === booking.start
+        ) {
+          result = 0;
+          console.log("in booking");
+        } else {
+          result = 1;
+          rooms[i].bookingDetails.push(booking);
+        }
+      });
+      if (result) return res.status(200).send("Booking confirmed");
+      else
+        return res
+          .status(400)
+          .send({ error: "Please select different time slot" });
+    }
   }
 });
 
-//listen
-app.listen(process.env.PORT || 3002);
+app.get("/listCustomer", (req, res) => {
+  let customerArray = [];
 
-// db.rooms.aggregate([
-//   {
-//     $lookup: {
-//       from: "customers",
-//       localField: "_id",
-//       foreignField: "roomID",
-//       as: "result",
-//     },
-//   },
-//   {
-//     $cond: {
-//       if: { $size: 1 },
-//       then: { $addFields: { isBooked: "Yes" } },
-//       else: { $addFields: { isBooked: "No" } },
-//     },
-//   },
-// ]);
+  rooms.forEach((room) => {
+    let customerObj = { roomName: room.name };
+
+    room.bookingDetails.forEach((customer) => {
+      customerObj.customerName = customer.customerName;
+      customerObj.date = customer.date;
+      customerObj.start = customer.start;
+      customerObj.end = customer.end;
+
+      customerArray.push(customerObj);
+    });
+  });
+
+  res.send(customerArray);
+});
+
+//get rooms
+
+app.get("/listRooms", (req, res) => {
+  console.log("list rooms");
+  res.status(200).send(rooms);
+});
+
+app.get("/", (req, res) => {
+  console.log("Welcome To Hall Booking");
+});
+
+const port = process.env.PORT || 3001;
+
+app.listen(port, () => {
+  console.log(`server started at ${port}`);
+});
